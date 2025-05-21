@@ -202,13 +202,18 @@ const Sidebar = ({ activeContent, onNavigate }) => {
   );
 };
 
-const ProductCard = ({ product }) => {
+const ProductCard = ({ product, onAddToCart }) => {
   return (
     <div className="bg-white p-4 rounded-lg shadow-md flex flex-col items-center border border-gray-200 transition-transform duration-200 hover:scale-[1.02]">
       <img src={product.image} alt={product.name} className="w-full h-48 object-cover rounded-md mb-4" />
       <h3 className="text-lg font-semibold text-gray-800 mb-2">{product.name}</h3>
       <p className="text-xl font-bold text-blue-600 mb-4">${product.price.toFixed(2)}</p>
-      <button className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors duration-200">Add to Cart</button>
+      <button
+        className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors duration-200"
+        onClick={() => onAddToCart(product)}
+      >
+        Add to Cart
+      </button>
     </div>
   );
 };
@@ -242,7 +247,7 @@ const HomeSection = () => {
   );
 };
 
-const ShopSection = () => {
+const ShopSection = ({ updateCart }) => {
   const products = [
     { id: 1, name: 'Elegant laptop Bag', price: 59.99, image: 'images/placeholder1.jpg' },
     { id: 2, name: 'Classic Leather bag', price: 89.50, image: 'images/placeholder2.jpg' },
@@ -251,18 +256,19 @@ const ShopSection = () => {
     { id: 5, name: 'Compact Sling Bag', price: 25.99, image: 'images/placeholder5.jpg' },
   ];
 
+  const handleAddToCart = (product) => {
+    updateCart(product);
+  };
+
   return (
     <div className="p-4">
       <h1 className="text-3xl font-bold mb-6 text-gray-800">Our Shop</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
         {products.map(product => (
-          <ProductCard key={product.id} product={product} />
+          <ProductCard key={product.id} product={product} onAddToCart={handleAddToCart} />
         ))}
       </div>
-      <div className="bg-gray-100 p-4 rounded-lg text-right shadow-inner border border-gray-200">
-        <p className="text-lg font-semibold text-gray-700 mb-2">Total: $0.00</p>
-        <button className="bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 transition-colors duration-200 text-lg shadow-md">Proceed to Checkout</button>
-      </div>
+      {/* The checkout info and button are now in MainContent */}
     </div>
   );
 };
@@ -302,7 +308,7 @@ const AddProductForm = () => {
           <input
             type="number"
             id="product-price"
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-leading-tight focus:outline-none focus:shadow-outline"
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
             placeholder="Enter price"
             value={productPrice}
             onChange={(e) => setProductPrice(e.target.value)}
@@ -471,15 +477,62 @@ const LogoutSection = ({ onLogout }) => {
   );
 };
 
-const MainContent = ({ activeContent, onLogout }) => {
+const Receipt = ({ cartItems, onClose }) => {
+  let total = 0;
+  cartItems.forEach(item => (total += item.price));
+
   return (
-    <div className="flex-grow p-4 ml-64"> {/* Add left margin to account for fixed sidebar */}
+    <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center z-30">
+      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+        <h2 className="text-2xl font-bold mb-4 text-gray-800">Order Receipt</h2>
+        {cartItems.length > 0 ? (
+          <ul>
+            {cartItems.map((item, index) => (
+              <li key={index} className="flex justify-between py-2 border-b border-gray-200">
+                <span className="text-gray-700">{item.name}</span>
+                <span className="font-semibold text-gray-800">${item.price.toFixed(2)}</span>
+              </li>
+            ))}
+            <li className="flex justify-between py-2 font-bold text-lg text-gray-800">
+              <span>Total:</span>
+              <span>${total.toFixed(2)}</span>
+            </li>
+          </ul>
+        ) : (
+          <p className="text-gray-600">Your cart is empty.</p>
+        )}
+        <button onClick={onClose} className="mt-6 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors duration-200">Close</button>
+      </div>
+    </div>
+  );
+};
+
+const MainContent = ({ activeContent, onLogout, cartItems, updateCart }) => {
+  const [showReceipt, setShowReceipt] = useState(false);
+
+  const handleCheckout = () => {
+    if (cartItems.length > 0) {
+      setShowReceipt(true);
+    } else {
+      alert('Your cart is empty. Please add items to checkout.');
+    }
+  };
+
+  const closeReceipt = () => {
+    setShowReceipt(false);
+  };
+
+  let total = 0;
+  cartItems.forEach(item => (total += item.price));
+
+  return (
+    <div className="flex-grow p-4 ml-64 relative"> {/* Added relative for Receipt positioning */}
       {(() => {
         switch (activeContent) {
           case 'home':
             return <HomeSection />;
           case 'shop':
-            return <ShopSection />;
+            return <ShopSection updateCart={updateCart} />;
           case 'admin':
             return <AdminSection />;
           case 'about-us':
@@ -497,11 +550,24 @@ const MainContent = ({ activeContent, onLogout }) => {
             );
         }
       })()}
+      {activeContent === 'shop' && (
+        <div className="bg-gray-100 p-4 rounded-lg text-right shadow-inner border border-gray-200 mt-4">
+          <p className="text-lg font-semibold text-gray-700 mb-2">Total: ${total.toFixed(2)}</p>
+          <button
+            onClick={handleCheckout}
+            className="bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 transition-colors duration-200 text-lg shadow-md"
+          >
+            Proceed to Checkout
+          </button>
+        </div>
+      )}
+
+      {showReceipt && <Receipt cartItems={cartItems} onClose={closeReceipt} />}
     </div>
   );
 };
 
-const HomePage = ({ onLogout }) => {
+const HomePage = ({ onLogout, updateCart, cartItems }) => {
   const [activeContent, setActiveContent] = useState('home');
 
   const handleSidebarNavigate = (contentId) => {
@@ -522,7 +588,12 @@ const HomePage = ({ onLogout }) => {
       <Header onNavigate={handleHeaderNavigate} />
       <div className="flex flex-grow max-w-7xl w-full mx-auto mt-16 rounded-lg shadow-xl">
         <Sidebar activeContent={activeContent} onNavigate={handleSidebarNavigate} />
-        <MainContent activeContent={activeContent} onLogout={onLogout} />
+        <MainContent
+          activeContent={activeContent}
+          onLogout={onLogout}
+          cartItems={cartItems}
+          updateCart={updateCart}
+        />
       </div>
     </div>
   );
@@ -531,6 +602,7 @@ const HomePage = ({ onLogout }) => {
 // --- Main App Component ---
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [cartItems, setCartItems] = useState([]);
 
   const handleLoginSuccess = () => {
     setIsLoggedIn(true);
@@ -538,7 +610,11 @@ const App = () => {
 
   const handleLogout = () => {
     setIsLoggedIn(false);
-    // Optionally clear any user session data here
+    setCartItems([]); // Clear cart on logout
+  };
+
+  const updateCart = (product) => {
+    setCartItems([...cartItems, product]);
   };
 
   // Ensure Material Symbols Outlined font is loaded
@@ -562,7 +638,7 @@ const App = () => {
   return (
     <div className="font-sans antialiased text-gray-900 min-h-screen flex flex-col">
       {isLoggedIn ? (
-        <HomePage onLogout={handleLogout} />
+        <HomePage onLogout={handleLogout} updateCart={updateCart} cartItems={cartItems} />
       ) : (
         <AuthPage onLoginSuccess={handleLoginSuccess} />
       )}
